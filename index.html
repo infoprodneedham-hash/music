@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNTH-2000 // PS1 Music Studio</title>
+    <style>
+        :root {
+            --bg-darker: #090d16;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            
+            /* Cool Palette Accent Colors */
+            --clr-cyan: #06b6d4;
+            --clr-teal: #14b8a6;
+            --clr-blue: #3b82f6;
+            --clr-indigo: #6366f1;
+            --clr-purple: #a855f7;
+            
+            --grid-glow: rgba(6, 182, 212, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-darker);
+            color: var(--text-main);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .studio-container {
+            width: 100%;
+            max-width: 1280px;
+            background: linear-gradient(145deg, var(--bg-dark), #111827);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(6, 182, 212, 0.05);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            position: relative;
+        }
+
+        /* Header Architecture */
+        .studio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 12px;
+            height: 12px;
+            background-color: var(--clr-cyan);
+            box-shadow: 0 0 10px var(--clr-cyan);
+            border-radius: 50%;
+        }
+
+        .studio-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, var(--text-main), var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .studio-version {
+            font-size: 0.7rem;
+            font-family: monospace;
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--clr-cyan);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        /* Matrix/Grid Layout Workspace */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Instrument Track Controls Column */
+        .instruments-column {
+            display: grid;
+            grid-template-rows: 36px repeat(8, 56px);
+            border-right: 1px solid var(--border-color);
+            background: rgba(9, 13, 22, 0.4);
+            z-index: 2;
+        }
+
+        .column-header {
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .instrument-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .instrument-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 15%;
+            height: 70%;
+            width: 4px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Distinct colors for instrument tracks */
+        .instrument-card.inst-0::before { background-color: var(--clr-cyan); }
+        .instrument-card.inst-1::before { background-color: var(--clr-teal); }
+        .instrument-card.inst-2::before { background-color: var(--clr-blue); }
+        .instrument-card.inst-3::before { background-color: var(--clr-indigo); }
+        .instrument-card.inst-4::before { background-color: var(--clr-purple); }
+        .instrument-card.inst-5::before { background-color: #ec4899; }
+        .instrument-card.inst-6::before { background-color: #f59e0b; }
+        .instrument-card.inst-7::before { background-color: #10b981; }
+
+        .instrument-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .instrument-type {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        /* Timeline/Sequencer Grid Column */
+        .sequencer-column {
+            display: grid;
+            grid-template-rows: 36px repeat(8, 56px);
+            position: relative;
+            overflow-x: auto;
+        }
+
+        /* Timeline Bar Indicators */
+        .timeline-header {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .bar-marker {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-right: 1px solid rgba(51, 65, 85, 0.6);
+            position: relative;
+        }
+
+        .bar-marker:last-child {
+            border-right: none;
+        }
+
+        .bar-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--clr-cyan);
+            text-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+        }
+
+        .step-sublabel {
+            grid-column: span 4;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding-bottom: 4px;
+            font-size: 0.55rem;
+            color: rgba(148, 163, 184, 0.4);
+            font-family: monospace;
+        }
+
+        /* Matrix Rows & Cells */
+        .matrix-row {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+        }
+
+        .matrix-row:last-child {
+            border-bottom: none;
+        }
+
+        .bar-block {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-right: 1px solid rgba(51, 65, 85, 0.6);
+        }
+
+        .bar-block:last-child {
+            border-right: none;
+        }
+
+        .note-cell {
+            background: rgba(30, 41, 59, 0.2);
+            border-right: 1px solid rgba(51, 65, 85, 0.15);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            position: relative;
+        }
+
+        .note-cell:nth-child(4n) {
+            border-right: none;
+        }
+
+        .note-cell:hover {
+            background: rgba(51, 65, 85, 0.4);
+        }
+
+        /* Active State Palette Styles */
+        .note-cell.active {
+            box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.2);
+        }
+
+        .inst-0 .note-cell.active { background: linear-gradient(135deg, var(--clr-cyan), #0891b2); box-shadow: 0 0 10px rgba(6, 182, 212, 0.5); }
+        .inst-1 .note-cell.active { background: linear-gradient(135deg, var(--clr-teal), #0d9488); box-shadow: 0 0 10px rgba(20, 184, 166, 0.5); }
+        .inst-2 .note-cell.active { background: linear-gradient(135deg, var(--clr-blue), #2563eb); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .inst-3 .note-cell.active { background: linear-gradient(135deg, var(--clr-indigo), #4f46e5); box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
+        .inst-4 .note-cell.active { background: linear-gradient(135deg, var(--clr-purple), #9333ea); box-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
+        .inst-5 .note-cell.active { background: linear-gradient(135deg, #ec4899, #db2777); box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
+        .inst-6 .note-cell.active { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+        .inst-7 .note-cell.active { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+
+        /* Smooth Floating Playhead Line */
+        .playhead-line {
+            position: absolute;
+            top: 36px;
+            left: 0;
+            width: 2px;
+            height: calc(100% - 36px);
+            background: #ffffff;
+            box-shadow: 0 0 12px #ffffff, 0 0 4px var(--clr-cyan);
+            pointer-events: none;
+            z-index: 5;
+            transform: translateX(0px);
+        }
+
+        /* Master Dashboard Lower Controls Section */
+        .dashboard-controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .playback-engine {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Control UI Elements & Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--clr-cyan), var(--clr-blue));
+            border: none;
+            color: #ffffff;
+            padding: 12px 28px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.45);
+            filter: brightness(1.1);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .btn-secondary {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+
+        /* Precise Display Chronometer */
+        .chronometer-panel {
+            background: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 160px;
+            justify-content: center;
+        }
+
+        .chrono-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .chrono-digits {
+            font-family: 'Share Tech Mono', monospace, Courier;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--clr-cyan);
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+            letter-spacing: 1px;
+        }
+
+        /* Persistent Preset Bank Architecture */
+        .preset-vault {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .vault-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 800;
+            text-align: right;
+            padding-right: 4px;
+        }
+
+        .slots-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .slot-container {
+            display: flex;
+            flex-direction: column;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .slot-number {
+            font-size: 0.65rem;
+            font-weight: bold;
+            text-align: center;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 2px 0;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .slot-container.occupied .slot-number {
+            color: var(--clr-teal);
+        }
+
+        .slot-actions {
+            display: flex;
+        }
+
+        .btn-slot {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-slot.save-action:hover {
+            background: rgba(236, 72, 153, 0.2);
+            color: #ec4899;
+        }
+
+        .btn-slot.load-action:hover {
+            background: rgba(20, 184, 166, 0.2);
+            color: var(--clr-teal);
+        }
+
+        .slot-container:not(.occupied) .btn-slot.load-action {
+            opacity: 0.25;
+            pointer-events: none;
+        }
+
+        /* Layout Notification System */
+        .toast-notification {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--clr-cyan);
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5), 0 0 15px rgba(6, 182, 212, 0.3);
+            color: var(--text-main);
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+        }
+
+        .toast-notification.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="studio-container">
+        <div class="toast-notification" id="toastSystem">System Initialization Complete</div>
+
+        <header class="studio-header">
+            <div class="logo-area">
+                <div class="logo-icon"></div>
+                <h1 class="studio-title">Synth-2000 Studio</h1>
+                <span class="studio-version">v1.2.0-PRO</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; font-family: monospace;">
+                8 BARS // 1.0s INCREMENTS // SYNTHESIZED DSP
+            </div>
+        </header>
+
+        <main class="workspace-grid" id="workspaceGrid">
+            
+            <div class="instruments-column" id="instrumentsCol">
+                <div class="column-header">Audio Track Node</div>
+                </div>
+
+            <div class="sequencer-column" id="sequencerCol">
+                <div class="timeline-header" id="timelineHeader">
+                    </div>
+
+                <div class="playhead-line" id="playhead"></div>
+
+                <div id="matrixRowsContainer" style="display: contents;"></div>
+            </div>
+        </main>
+
+        <footer class="dashboard-controls">
+            
+            <div class="playback-engine">
+                <button class="btn-primary" id="btnPlayPause">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+                    <span id="txtPlayPause">Play Studio</span>
+                </button>
+                <button class="btn-secondary" id="btnRestart">Restart</button>
+                
+                <div class="chronometer-panel">
+                    <span class="chrono-label">Time</span>
+                    <span class="chrono-digits" id="timerDisplay">00:00.00</span>
+                </div>
+            </div>
+
+            <div class="preset-vault">
+                <div class="vault-title">Memory Storage Arrays (Slots 1-8)</div>
+                <div class="slots-row" id="slotsBankContainer">
+                    </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * Core Engine Architecture & Operational Definitions
+         * Application: SYNTH-2000 // Professional Grade Web Audio Sequencer
+         */
+
+        // Matrix definitions. 8 bars, each with 4 sub-steps = 32 operational columns.
+        const TOTAL_BARS = 8;
+        const STEPS_PER_BAR = 4;
+        const TOTAL_STEPS = TOTAL_BARS * STEPS_PER_BAR; // 32 Steps total
+        const BAR_DURATION = 1.0; // Exactly 1 second per bar as requested
+        const STEP_DURATION = BAR_DURATION / STEPS_PER_BAR; // 0.25 seconds per step subdivision
+        const LOOP_DURATION = TOTAL_BARS * BAR_DURATION; // Exactly 8.00 seconds cycle loop length
+
+        // State variables
+        let isPlaying = false;
+        let audioCtx = null;
+        let currentStep = 0;
+        let nextNoteTime = 0.0;
+        let lookaheadIntervalId = null;
+        let animationFrameId = null;
+        let lastDrawTime = -1;
+
+        // Master Grid Data Configuration Matrix Store: 8 channels/instruments x 32 step blocks
+        const TOTAL_INSTRUMENTS = 8;
+        let sequencerData = Array.from({ length: TOTAL_INSTRUMENTS }, () => Array(TOTAL_STEPS).fill(false));
+
+        // Setup Instrument Profiles & Properties
+        const INSTRUMENTS = [
+            { id: 0, name: "Acoustic Piano", type: "Synth Keys" },
+            { id: 1, name: "Alto Saxophone", type: "Wind Reed" },
+            { id: 2, name: "Deep Bass Guitar", type: "Sub Pluck" },
+            { id: 3, name: "Snare Drum", type: "Noise Perc" },
+            { id: 4, name: "Solid Kick Drum", type: "Sub Perc" },
+            { id: 5, name: "Closed Hi-Hat", type: "High Perc" },
+            { id: 6, name: "Hyper Drive Lead", type: "Saw Lead" },
+            { id: 7, name: "Space Ambient Pad", type: "Poly Chime" }
+        ];
+
+        // Core Document Elements Cache
+        const instrumentsCol = document.getElementById('instrumentsCol');
+        const timelineHeader = document.getElementById('timelineHeader');
+        const matrixRowsContainer = document.getElementById('matrixRowsContainer');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const txtPlayPause = document.getElementById('txtPlayPause');
+        const playIcon = document.getElementById('playIcon');
+        const btnRestart = document.getElementById('btnRestart');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const slotsBankContainer = document.getElementById('slotsBankContainer');
+        const playhead = document.getElementById('playhead');
+        const toastSystem = document.getElementById('toastSystem');
+        const sequencerCol = document.getElementById('sequencerCol');
+
+        // Initial setup sequence to inject mock data into array so app is musical immediately
+        function injectInitialDemoPattern() {
+            // Kick Drum Pattern (Inst idx 4)
+            for(let i=0; i<TOTAL_STEPS; i+=4) sequencerData[4][i] = true;
+            // Snare Drum Pattern (Inst idx 3)
+            for(let i=4; i<TOTAL_STEPS; i+=8) sequencerData[3][i] = true;
+            // Hi-Hat Pattern (Inst idx 5)
+            for(let i=0; i<TOTAL_STEPS; i+=2) sequencerData[5][i] = true;
+            // Bass Pattern (Inst idx 2)
+            sequencerData[2][0] = true; sequencerData[2][2] = true;
+            sequencerData[2][6] = true; sequencerData[2][12] = true;
+            sequencerData[2][16] = true; sequencerData[2][18] = true;
+            sequencerData[2][22] = true; sequencerData[2][28] = true;
+            // Piano Melody Setup (Inst idx 0)
+            sequencerData[0][0] = true; sequencerData[0][4] = true;
+            sequencerData[0][10] = true; sequencerData[0][14] = true;
+            sequencerData[0][16] = true; sequencerData[0][20] = true;
+            sequencerData[0][26] = true; sequencerData[0][30] = true;
+            // Saxophone Accent Setup (Inst idx 1)
+            sequencerData[1][8] = true; sequencerData[1][11] = true;
+            sequencerData[1][24] = true; sequencerData[1][27] = true;
+        }
+
+        /**
+         * Web Audio API Synthesizers Generation Layer
+         * Emulates instrument algorithms fully using native code synthesis math nodes
+         */
+        function initAudioEngine() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // 1. Piano Synth Node Trigger
+        function playPianoNode(time, stepIndex) {
+            const frequencies = [261.63, 329.63, 392.00, 523.25, 293.66, 349.23, 440.00, 587.33];
+            let freq = frequencies[stepIndex % frequencies.length];
+            
+            let osc = audioCtx.createOscillator();
+            let oscSub = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, time);
+            
+            oscSub.type = 'sine';
+            oscSub.frequency.setValueAtTime(freq / 2, time);
+            
+            gainNode.gain.setValueAtTime(0.25, time);
+            gainNode.gain.exponentialRampToValueAtTime(0.005, time + 0.4);
+            
+            osc.connect(gainNode);
+            oscSub.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start(time);
+            oscSub.start(time);
+            osc.stop(time + 0.45);
+            oscSub.stop(time + 0.45);
+        }
+
+        // 2. Saxophone Synthesis Approximation Engine
+        function playSaxophoneNode(time, stepIndex) {
+            const scale = [311.13, 349.23, 369.99, 415.30, 466.16, 554.37, 622.25, 698.46];
+            let freq = scale[(stepIndex * 3) % scale.length];
+
+            let osc = audioCtx.createOscillator();
+            let filter = audioCtx.createBiquadFilter();
+            let gainNode = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, time);
+            // Inject subtle pitch vibrato characteristic of saxophone reed models
+            osc.frequency.linearRampToValueAtTime(freq + 4, time + 0.1);
+            osc.frequency.linearRampToValueAtTime(freq - 2, time + 0.25);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, time);
+            filter.frequency.exponentialRampToValueAtTime(1400, time + 0.08);
+            filter.frequency.linearRampToValueAtTime(700, time + 0.3);
+
+            gainNode.gain.setValueAtTime(0.0, time);
+            gainNode.gain.linearRampToValueAtTime(0.18, time + 0.05); // slightly softer reed attack curve
+            gainNode.gain.exponentialRampToValueAtTime(0.005, time + 0.35);
+
+            osc.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start(time);
+            osc.stop(time + 0.4);
+        }
+
+        // 3. Bass Guitar Sub-Synth
+        function playBassNode(time, stepIndex) {
+            const rootNotes = [55.00, 65.41, 73.42, 82.41, 61.74, 69.30, 87.31, 98.00];
+            let freq = rootNotes[Math.floor(stepIndex / 4) % rootNotes.length];
+            if (stepIndex % 4 === 2) freq *= 1.5; // perfect fifth variation bounce
+
+            let oscTriangle = audioCtx.createOscillator();
+            let oscSine = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+
+            oscTriangle.type = 'triangle';
+            oscTriangle.frequency.setValueAtTime(freq, time);
+            
+            oscSine.type = 'sine';
+            oscSine.frequency.setValueAtTime(freq, time);
+
+            gainNode.gain.setValueAtTime(0.35, time);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.22);
+
+            oscTriangle.connect(gainNode);
+            oscSine.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscTriangle.start(time);
+            oscSine.start(time);
+            oscTriangle.stop(time + 0.25);
+            oscSine.stop(time + 0.25);
+        }
+
+        // Helper noise buffer creation algorithm for snare/hi-hat hardware models
+        function createNoiseBuffer() {
+            let bufferSize = audioCtx.sampleRate * 0.5;
+            let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            let data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            return buffer;
+        }
+
+        // 4. Snare White Noise Modulator
+        function playSnareNode(time) {
+            let noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = createNoiseBuffer();
+
+            let noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.setValueAtTime(1000, time);
+
+            let noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.4, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+
+            // Shell tone oscillator component modeling
+            let oscShell = audioCtx.createOscillator();
+            let shellGain = audioCtx.createGain();
+            oscShell.type = 'triangle';
+            oscShell.frequency.setValueAtTime(180, time);
+            shellGain.gain.setValueAtTime(0.25, time);
+            shellGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+
+            noiseSource.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+
+            oscShell.connect(shellGain);
+            shellGain.connect(audioCtx.destination);
+
+            noiseSource.start(time);
+            oscShell.start(time);
+            noiseSource.stop(time + 0.18);
+            oscShell.stop(time + 0.12);
+        }
+
+        // 5. Solid Kick Drum Sweep Model
+        function playKickNode(time) {
+            let osc = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+
+            osc.type = 'sine';
+            // Rapid pitch sweep frequency downward curve
+            osc.frequency.setValueAtTime(130, time);
+            osc.frequency.exponentialRampToValueAtTime(45, time + 0.08);
+
+            gainNode.gain.setValueAtTime(0.65, time);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start(time);
+            osc.stop(time + 0.2);
+        }
+
+        // 6. High-pass Metal Hi-Hat Model
+        function playHiHatNode(time) {
+            let noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = createNoiseBuffer();
+
+            let filter = audioCtx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(7500, time);
+
+            let gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.18, time);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.04); // Ultra short burst decay
+
+            noiseSource.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            noiseSource.start(time);
+            noiseSource.stop(time + 0.05);
+        }
+
+        // 7. Electronic Sawtooth Lead
+        function playLeadNode(time, stepIndex) {
+            const theme = [440.00, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99, 880.00];
+            let freq = theme[(stepIndex + 2) % theme.length];
+
+            let osc = audioCtx.createOscillator();
+            let filter = audioCtx.createBiquadFilter();
+            let gainNode = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, time);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2500, time);
+            filter.frequency.exponentialRampToValueAtTime(600, time + 0.18);
+
+            gainNode.gain.setValueAtTime(0.1, time);
+            gainNode.gain.exponentialRampToValueAtTime(0.002, time + 0.2);
+
+            osc.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start(time);
+            osc.stop(time + 0.22);
+        }
+
+        // 8. Chime Poly Space Ambient Pad
+        function playPadNode(time, stepIndex) {
+            const chords = [
+                [261.63, 329.63, 392.00], // C Maj
+                [293.66, 349.23, 440.00], // D Min
+                [349.23, 440.00, 523.25], // F Maj
+                [392.00, 493.88, 587.33]  // G Maj
+            ];
+            let chordSelection = chords[Math.floor(stepIndex / 8) % chords.length];
+
+            // Launch cluster nodes for structural unison pad harmony chords
+            chordSelection.forEach(freq => {
+                let osc = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq * 2, time); // elevated higher register octaves
+
+                gainNode.gain.setValueAtTime(0.0, time);
+                gainNode.gain.linearRampToValueAtTime(0.06, time + 0.1); // long fade pad profile attack
+                gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.45);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.start(time);
+                osc.stop(time + 0.5);
+            });
+        }
+
+        // Master Audio Dispatch Switch Router Route Map Assembly
+        function dispatchInstrumentAudio(instrumentId, targetTime, stepIndex) {
+            switch(instrumentId) {
+                case 0: playPianoNode(targetTime, stepIndex); break;
+                case 1: playSaxophoneNode(targetTime, stepIndex); break;
+                case 2: playBassNode(targetTime, stepIndex); break;
+                case 3: playSnareNode(targetTime); break;
+                case 4: playKickNode(targetTime); break;
+                case 5: playHiHatNode(targetTime); break;
+                case 6: playLeadNode(targetTime, stepIndex); break;
+                case 7: playPadNode(targetTime, stepIndex); break;
+            }
+        }
+
+        /**
+         * Precision Clock Lookahead Core Scheduler Algorithm Architecture
+         */
+        let sessionBaseStartTime = 0.0;
+        let internalCycleLoopCount = 0;
+
+        function triggerEngineScheduler() {
+            // Check upcoming parameters within timeline bounds frame window buffer
+            while (nextNoteTime < audioCtx.currentTime + 0.05) {
+                scheduleNoteIndex(currentStep, nextNoteTime);
+                advanceNextStepCounter();
+            }
+            lookaheadIntervalId = setTimeout(triggerEngineScheduler, 20);
+        }
+
+        function scheduleNoteIndex(step, time) {
+            for (let channel = 0; channel < TOTAL_INSTRUMENTS; channel++) {
+                if (sequencerData[channel][step]) {
+                    dispatchInstrumentAudio(channel, time, step);
+                }
+            }
+        }
+
+        function advanceNextStepCounter() {
+            currentStep++;
+            if (currentStep >= TOTAL_STEPS) {
+                currentStep = 0;
+                internalCycleLoopCount++;
+            }
+            nextNoteTime += STEP_DURATION;
+        }
+
+        /**
+         * Smooth Animation Render Tick Engine Loop (60FPS Frame Redraw Processing)
+         */
+        function animateSynchronizedPlayhead() {
+            if (!isPlaying) return;
+
+            let currentTime = audioCtx.currentTime;
+            let elapsedSessionTime = currentTime - sessionBaseStartTime;
+            
+            // Format precise counting digital timer layout string
+            let minutes = Math.floor(elapsedSessionTime / 60);
+            let seconds = Math.floor(elapsedSessionTime % 60);
+            let centiseconds = Math.floor((elapsedSessionTime % 1) * 100);
+            timerDisplay.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+
+            // Compute precision physical pixel point conversion calculations for playhead placement tracking
+            let totalRunningTimeInLoop = elapsedSessionTime % LOOP_DURATION;
+            let totalWidthOfTrackContainer = sequencerCol.clientWidth;
+            let calculatedPercentagePositionX = totalRunningTimeInLoop / LOOP_DURATION;
+            let currentPixelOffsetX = calculatedPercentagePositionX * totalWidthOfTrackContainer;
+
+            playhead.style.transform = `translateX(${currentPixelOffsetX}px)`;
+
+            animationFrameId = requestAnimationFrame(animateSynchronizedPlayhead);
+        }
+
+        /**
+         * Playback State Control Triggers
+         */
+        function toggleStudioPlayback() {
+            initAudioEngine();
+            
+            if (!isPlaying) {
+                // Resume audio context layer if suspended by security browser gate safety parameters
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                isPlaying = true;
+                txtPlayPause.textContent = "Pause Engine";
+                playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+                
+                // Initialize timing counters sync pointers accurately
+                let currentAudioEngineTime = audioCtx.currentTime;
+                sessionBaseStartTime = currentAudioEngineTime;
+                internalCycleLoopCount = 0;
+                currentStep = 0;
+                nextNoteTime = currentAudioEngineTime;
+                
+                triggerEngineScheduler();
+                animateSynchronizedPlayhead();
+                showSystemToast("Synthesizer Core Engine Active");
+            } else {
+                haltStudioPlayback();
+                showSystemToast("Audio Sequencer Suspended");
+            }
+        }
+
+        function haltStudioPlayback() {
+            isPlaying = false;
+            txtPlayPause.textContent = "Play Studio";
+            playIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+            clearTimeout(lookaheadIntervalId);
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        function restartStudioPlayback() {
+            let stateWasPlaying = isPlaying;
+            if (stateWasPlaying) {
+                haltStudioPlayback();
+            }
+            
+            // Hard reset step position indices
+            currentStep = 0;
+            timerDisplay.textContent = "00:00.00";
+            playhead.style.transform = "translateX(0px)";
+            
+            if (stateWasPlaying) {
+                // Instantly respawn scheduler instances
+                toggleStudioPlayback();
+            } else {
+                showSystemToast("Sequencer Timeline Rewound");
+            }
+        }
+
+        /**
+         * UI Render Layer DOM Generator Matrix
+         */
+        function assembleStudioDOM() {
+            // 1. Construct Left Control Sidebars Channels
+            instrumentsCol.innerHTML = '<div class="column-header">Audio Track Node</div>';
+            INSTRUMENTS.forEach(inst => {
+                let card = document.createElement('div');
+                card.className = `instrument-card inst-${inst.id}`;
+                
+                let name = document.createElement('span');
+                name.className = 'instrument-name';
+                name.textContent = inst.name;
+                
+                let type = document.createElement('span');
+                type.className = 'instrument-type';
+                type.textContent = inst.type;
+                
+                card.appendChild(name);
+                card.appendChild(type);
+                instrumentsCol.appendChild(card);
+            });
+
+            // 2. Build Structural Top Ruler Markers Sub-divisions
+            timelineHeader.innerHTML = '';
+            for (let b = 0; b < TOTAL_BARS; b++) {
+                let marker = document.createElement('div');
+                marker.className = 'bar-marker';
+                
+                let label = document.createElement('div');
+                label.className = 'bar-label';
+                label.textContent = `BAR ${b + 1} (${b}.0s)`;
+                
+                let subdivisions = document.createElement('div');
+                subdivisions.className = 'step-sublabel';
+                for(let s=1; s<=STEPS_PER_BAR; s++) {
+                    let dot = document.createElement('span');
+                    dot.textContent = `.${s}`;
+                    subdivisions.appendChild(dot);
+                }
+                
+                marker.appendChild(label);
+                marker.appendChild(subdivisions);
+                timelineHeader.appendChild(marker);
+            }
+
+            // 3. Render Matrix Rows and Intersection Points
+            matrixRowsContainer.innerHTML = '';
+            for (let r = 0; r < TOTAL_INSTRUMENTS; r++) {
+                let rowElement = document.createElement('div');
+                rowElement.className = `matrix-row inst-${r}`;
+                
+                for (let b = 0; b < TOTAL_BARS; b++) {
+                    let block = document.createElement('div');
+                    block.className = 'bar-block';
+                    
+                    for (let s = 0; s < STEPS_PER_BAR; s++) {
+                        let totalStepIndex = (b * STEPS_PER_BAR) + s;
+                        let cell = document.createElement('div');
+                        cell.className = 'note-cell';
+                        if (sequencerData[r][totalStepIndex]) {
+                            cell.classList.add('active');
+                        }
+                        
+                        // Register click binding event targets directly
+                        cell.addEventListener('mousedown', () => {
+                            initAudioEngine();
+                            let state = !sequencerData[r][totalStepIndex];
+                            sequencerData[r][totalStepIndex] = state;
+                            cell.classList.toggle('active', state);
+                            
+                            // Auditively monitor user note placement triggers on the fly
+                            if(state) {
+                                dispatchInstrumentAudio(r, audioCtx.currentTime, totalStepIndex);
+                            }
+                        });
+                        
+                        block.appendChild(cell);
+                    }
+                    rowElement.appendChild(block);
+                }
+                matrixRowsContainer.appendChild(rowElement);
+            }
+        }
+
+        /**
+         * Memory Vault Storage Persistent Configurations Block Array (LocalStorage Management)
+         */
+        function initializeVaultSlots() {
+            slotsBankContainer.innerHTML = '';
+            for (let i = 1; i <= 8; i++) {
+                let keyName = `synth2000_preset_slot_${i}`;
+                let occupied = localStorage.getItem(keyName) !== null;
+
+                let container = document.createElement('div');
+                container.className = `slot-container ${occupied ? 'occupied' : ''}`;
+                container.id = `slotContainer_${i}`;
+
+                let numLabel = document.createElement('div');
+                numLabel.className = 'slot-number';
+                numLabel.textContent = `SLOT 0${i}`;
+
+                let actionWrapper = document.createElement('div');
+                actionWrapper.className = 'slot-actions';
+
+                let btnSave = document.createElement('button');
+                btnSave.className = 'btn-slot save-action';
+                btnSave.textContent = 'S';
+                btnSave.title = `Save matrix state layout definition map to Slot ${i}`;
+                btnSave.onclick = () => saveConfigurationToVaultSlot(i);
+
+                let btnLoad = document.createElement('button');
+                btnLoad.className = 'btn-slot load-action';
+                btnLoad.textContent = 'L';
+                btnLoad.title = `Load array preset configuration from Slot ${i}`;
+                btnLoad.onclick = () => loadConfigurationFromVaultSlot(i);
+
+                actionWrapper.appendChild(btnSave);
+                actionWrapper.appendChild(btnLoad);
+                container.appendChild(numLabel);
+                container.appendChild(actionWrapper);
+                slotsBankContainer.appendChild(container);
+            }
+        }
+
+        function saveConfigurationToVaultSlot(slotIndex) {
+            let keyName = `synth2000_preset_slot_${slotIndex}`;
+            let serializedData = JSON.stringify(sequencerData);
+            localStorage.setItem(keyName, serializedData);
+            
+            showSystemToast(`Saved Matrix Pattern to Storage Slot 0${slotIndex}`);
+            initializeVaultSlots(); // update display indices configurations state indicators
+        }
+
+        function loadConfigurationFromVaultSlot(slotIndex) {
+            let keyName = `synth2000_preset_slot_${slotIndex}`;
+            let dataRawString = localStorage.getItem(keyName);
+            
+            if (dataRawString) {
+                let matrixPayload = JSON.parse(dataRawString);
+                // Assign mapping verification check blocks lengths safely
+                if(Array.isArray(matrixPayload) && matrixPayload.length === TOTAL_INSTRUMENTS) {
+                    sequencerData = matrixPayload;
+                    assembleStudioDOM(); // redraw full canvas framework layers instantly
+                    showSystemToast(`Loaded Array Data from Storage Slot 0${slotIndex}`);
+                }
+            }
+        }
+
+        /**
+         * Helper System Toast Banner Notification Modals
+         */
+        let toastTimeoutId = null;
+        function showSystemToast(messageString) {
+            clearTimeout(toastTimeoutId);
+            toastSystem.textContent = messageString.toUpperCase();
+            toastSystem.classList.add('visible');
+            toastTimeoutId = setTimeout(() => {
+                toastSystem.classList.remove('visible');
+            }, 3000);
+        }
+
+        // Add Window Resize Safe Redraw Handlers to snap element playhead tracking
+        window.addEventListener('resize', () => {
+            if(!isPlaying) {
+                playhead.style.transform = "translateX(0px)";
+                timerDisplay.textContent = "00:00.00";
+            }
+        });
+
+        /**
+         * Application Boot Lifecycle Initializer Integration
+         */
+        function initializeApplicationLifecycle() {
+            injectInitialDemoPattern();
+            assembleStudioDOM();
+            initializeVaultSlots();
+            
+            // Operational Click Trigger Registrations
+            btnPlayPause.onclick = toggleStudioPlayback;
+            btnRestart.onclick = restartStudioPlayback;
+            
+            console.log("SYNTH-2000 Hardware Web Audio Interface Framework active and ready.");
+        }
+
+        // Initialize engine framework pipeline on content delivery ready
+        window.onload = initializeApplicationLifecycle;
+    </script>
+</body>
+</html>
