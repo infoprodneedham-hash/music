@@ -19,6 +19,7 @@
             --clr-blue: #3b82f6;
             --clr-indigo: #6366f1;
             --clr-purple: #a855f7;
+            --clr-danger: #ef4444;
             
             --grid-glow: rgba(6, 182, 212, 0.15);
         }
@@ -304,7 +305,7 @@
         .playback-engine {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         /* Control UI Elements & Buttons */
@@ -312,7 +313,7 @@
             background: linear-gradient(135deg, var(--clr-cyan), var(--clr-blue));
             border: none;
             color: #ffffff;
-            padding: 12px 28px;
+            padding: 12px 24px;
             font-size: 0.9rem;
             font-weight: 700;
             border-radius: 8px;
@@ -340,7 +341,7 @@
             background: rgba(51, 65, 85, 0.5);
             border: 1px solid var(--border-color);
             color: var(--text-main);
-            padding: 12px 20px;
+            padding: 12px 18px;
             font-size: 0.9rem;
             font-weight: 600;
             border-radius: 8px;
@@ -355,6 +356,27 @@
             border-color: rgba(148, 163, 184, 0.5);
         }
 
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 12px 18px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: var(--clr-danger);
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+        }
+
         /* Precise Display Chronometer */
         .chronometer-panel {
             background: var(--bg-darker);
@@ -364,8 +386,9 @@
             display: flex;
             align-items: baseline;
             gap: 8px;
-            min-width: 160px;
+            min-width: 150px;
             justify-content: center;
+            margin-left: 8px;
         }
 
         .chrono-label {
@@ -507,11 +530,10 @@
             
             <div class="instruments-column" id="instrumentsCol">
                 <div class="column-header">Audio Track Node</div>
-                </div>
+            </div>
 
             <div class="sequencer-column" id="sequencerCol">
-                <div class="timeline-header" id="timelineHeader">
-                    </div>
+                <div class="timeline-header" id="timelineHeader"></div>
 
                 <div class="playhead-line" id="playhead"></div>
 
@@ -527,6 +549,7 @@
                     <span id="txtPlayPause">Play Studio</span>
                 </button>
                 <button class="btn-secondary" id="btnRestart">Restart</button>
+                <button class="btn-danger" id="btnClearGrid">Clear Grid</button>
                 
                 <div class="chronometer-panel">
                     <span class="chrono-label">Time</span>
@@ -536,8 +559,7 @@
 
             <div class="preset-vault">
                 <div class="vault-title">Memory Storage Arrays (Slots 1-8)</div>
-                <div class="slots-row" id="slotsBankContainer">
-                    </div>
+                <div class="slots-row" id="slotsBankContainer"></div>
             </div>
         </footer>
     </div>
@@ -545,14 +567,12 @@
     <script>
         /**
          * Core Engine Architecture & Operational Definitions
-         * Application: SYNTH-2000 // Professional Grade Web Audio Sequencer
          */
 
-        // Matrix definitions. 8 bars, each with 4 sub-steps = 32 operational columns.
         const TOTAL_BARS = 8;
         const STEPS_PER_BAR = 4;
         const TOTAL_STEPS = TOTAL_BARS * STEPS_PER_BAR; // 32 Steps total
-        const BAR_DURATION = 1.0; // Exactly 1 second per bar as requested
+        const BAR_DURATION = 1.0; // Exactly 1 second per bar
         const STEP_DURATION = BAR_DURATION / STEPS_PER_BAR; // 0.25 seconds per step subdivision
         const LOOP_DURATION = TOTAL_BARS * BAR_DURATION; // Exactly 8.00 seconds cycle loop length
 
@@ -563,7 +583,6 @@
         let nextNoteTime = 0.0;
         let lookaheadIntervalId = null;
         let animationFrameId = null;
-        let lastDrawTime = -1;
 
         // Master Grid Data Configuration Matrix Store: 8 channels/instruments x 32 step blocks
         const TOTAL_INSTRUMENTS = 8;
@@ -589,6 +608,7 @@
         const txtPlayPause = document.getElementById('txtPlayPause');
         const playIcon = document.getElementById('playIcon');
         const btnRestart = document.getElementById('btnRestart');
+        const btnClearGrid = document.getElementById('btnClearGrid');
         const timerDisplay = document.getElementById('timerDisplay');
         const slotsBankContainer = document.getElementById('slotsBankContainer');
         const playhead = document.getElementById('playhead');
@@ -597,30 +617,26 @@
 
         // Initial setup sequence to inject mock data into array so app is musical immediately
         function injectInitialDemoPattern() {
-            // Kick Drum Pattern (Inst idx 4)
-            for(let i=0; i<TOTAL_STEPS; i+=4) sequencerData[4][i] = true;
-            // Snare Drum Pattern (Inst idx 3)
-            for(let i=4; i<TOTAL_STEPS; i+=8) sequencerData[3][i] = true;
-            // Hi-Hat Pattern (Inst idx 5)
-            for(let i=0; i<TOTAL_STEPS; i+=2) sequencerData[5][i] = true;
-            // Bass Pattern (Inst idx 2)
+            for(let i=0; i<TOTAL_STEPS; i+=4) sequencerData[4][i] = true; // Kick
+            for(let i=4; i<TOTAL_STEPS; i+=8) sequencerData[3][i] = true; // Snare
+            for(let i=0; i<TOTAL_STEPS; i+=2) sequencerData[5][i] = true; // Hi-Hat
+            
+            // Bass Pattern
             sequencerData[2][0] = true; sequencerData[2][2] = true;
             sequencerData[2][6] = true; sequencerData[2][12] = true;
             sequencerData[2][16] = true; sequencerData[2][18] = true;
-            sequencerData[2][22] = true; sequencerData[2][28] = true;
-            // Piano Melody Setup (Inst idx 0)
+            
+            // Piano Melody Setup
             sequencerData[0][0] = true; sequencerData[0][4] = true;
             sequencerData[0][10] = true; sequencerData[0][14] = true;
-            sequencerData[0][16] = true; sequencerData[0][20] = true;
-            sequencerData[0][26] = true; sequencerData[0][30] = true;
-            // Saxophone Accent Setup (Inst idx 1)
+            
+            // Saxophone Accent Setup
             sequencerData[1][8] = true; sequencerData[1][11] = true;
-            sequencerData[1][24] = true; sequencerData[1][27] = true;
+            sequencerData[1][24] = true;
         }
 
         /**
          * Web Audio API Synthesizers Generation Layer
-         * Emulates instrument algorithms fully using native code synthesis math nodes
          */
         function initAudioEngine() {
             if (!audioCtx) {
@@ -628,18 +644,15 @@
             }
         }
 
-        // 1. Piano Synth Node Trigger
         function playPianoNode(time, stepIndex) {
             const frequencies = [261.63, 329.63, 392.00, 523.25, 293.66, 349.23, 440.00, 587.33];
             let freq = frequencies[stepIndex % frequencies.length];
-            
             let osc = audioCtx.createOscillator();
             let oscSub = audioCtx.createOscillator();
             let gainNode = audioCtx.createGain();
             
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, time);
-            
             oscSub.type = 'sine';
             oscSub.frequency.setValueAtTime(freq / 2, time);
             
@@ -656,28 +669,23 @@
             oscSub.stop(time + 0.45);
         }
 
-        // 2. Saxophone Synthesis Approximation Engine
         function playSaxophoneNode(time, stepIndex) {
             const scale = [311.13, 349.23, 369.99, 415.30, 466.16, 554.37, 622.25, 698.46];
             let freq = scale[(stepIndex * 3) % scale.length];
-
             let osc = audioCtx.createOscillator();
             let filter = audioCtx.createBiquadFilter();
             let gainNode = audioCtx.createGain();
 
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(freq, time);
-            // Inject subtle pitch vibrato characteristic of saxophone reed models
             osc.frequency.linearRampToValueAtTime(freq + 4, time + 0.1);
-            osc.frequency.linearRampToValueAtTime(freq - 2, time + 0.25);
 
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(800, time);
             filter.frequency.exponentialRampToValueAtTime(1400, time + 0.08);
-            filter.frequency.linearRampToValueAtTime(700, time + 0.3);
 
             gainNode.gain.setValueAtTime(0.0, time);
-            gainNode.gain.linearRampToValueAtTime(0.18, time + 0.05); // slightly softer reed attack curve
+            gainNode.gain.linearRampToValueAtTime(0.18, time + 0.05);
             gainNode.gain.exponentialRampToValueAtTime(0.005, time + 0.35);
 
             osc.connect(filter);
@@ -688,11 +696,10 @@
             osc.stop(time + 0.4);
         }
 
-        // 3. Bass Guitar Sub-Synth
         function playBassNode(time, stepIndex) {
             const rootNotes = [55.00, 65.41, 73.42, 82.41, 61.74, 69.30, 87.31, 98.00];
             let freq = rootNotes[Math.floor(stepIndex / 4) % rootNotes.length];
-            if (stepIndex % 4 === 2) freq *= 1.5; // perfect fifth variation bounce
+            if (stepIndex % 4 === 2) freq *= 1.5;
 
             let oscTriangle = audioCtx.createOscillator();
             let oscSine = audioCtx.createOscillator();
@@ -700,7 +707,6 @@
 
             oscTriangle.type = 'triangle';
             oscTriangle.frequency.setValueAtTime(freq, time);
-            
             oscSine.type = 'sine';
             oscSine.frequency.setValueAtTime(freq, time);
 
@@ -717,7 +723,6 @@
             oscSine.stop(time + 0.25);
         }
 
-        // Helper noise buffer creation algorithm for snare/hi-hat hardware models
         function createNoiseBuffer() {
             let bufferSize = audioCtx.sampleRate * 0.5;
             let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -728,11 +733,9 @@
             return buffer;
         }
 
-        // 4. Snare White Noise Modulator
         function playSnareNode(time) {
             let noiseSource = audioCtx.createBufferSource();
             noiseSource.buffer = createNoiseBuffer();
-
             let noiseFilter = audioCtx.createBiquadFilter();
             noiseFilter.type = 'bandpass';
             noiseFilter.frequency.setValueAtTime(1000, time);
@@ -741,7 +744,6 @@
             noiseGain.gain.setValueAtTime(0.4, time);
             noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
 
-            // Shell tone oscillator component modeling
             let oscShell = audioCtx.createOscillator();
             let shellGain = audioCtx.createGain();
             oscShell.type = 'triangle';
@@ -752,7 +754,6 @@
             noiseSource.connect(noiseFilter);
             noiseFilter.connect(noiseGain);
             noiseGain.connect(audioCtx.destination);
-
             oscShell.connect(shellGain);
             shellGain.connect(audioCtx.destination);
 
@@ -762,13 +763,10 @@
             oscShell.stop(time + 0.12);
         }
 
-        // 5. Solid Kick Drum Sweep Model
         function playKickNode(time) {
             let osc = audioCtx.createOscillator();
             let gainNode = audioCtx.createGain();
-
             osc.type = 'sine';
-            // Rapid pitch sweep frequency downward curve
             osc.frequency.setValueAtTime(130, time);
             osc.frequency.exponentialRampToValueAtTime(45, time + 0.08);
 
@@ -777,44 +775,37 @@
 
             osc.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-
             osc.start(time);
             osc.stop(time + 0.2);
         }
 
-        // 6. High-pass Metal Hi-Hat Model
         function playHiHatNode(time) {
             let noiseSource = audioCtx.createBufferSource();
             noiseSource.buffer = createNoiseBuffer();
-
             let filter = audioCtx.createBiquadFilter();
             filter.type = 'highpass';
             filter.frequency.setValueAtTime(7500, time);
 
             let gainNode = audioCtx.createGain();
             gainNode.gain.setValueAtTime(0.18, time);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.04); // Ultra short burst decay
+            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
 
             noiseSource.connect(filter);
             filter.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-
             noiseSource.start(time);
             noiseSource.stop(time + 0.05);
         }
 
-        // 7. Electronic Sawtooth Lead
         function playLeadNode(time, stepIndex) {
             const theme = [440.00, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99, 880.00];
             let freq = theme[(stepIndex + 2) % theme.length];
-
             let osc = audioCtx.createOscillator();
             let filter = audioCtx.createBiquadFilter();
             let gainNode = audioCtx.createGain();
 
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(freq, time);
-
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(2500, time);
             filter.frequency.exponentialRampToValueAtTime(600, time + 0.18);
@@ -825,42 +816,34 @@
             osc.connect(filter);
             filter.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-
             osc.start(time);
             osc.stop(time + 0.22);
         }
 
-        // 8. Chime Poly Space Ambient Pad
         function playPadNode(time, stepIndex) {
             const chords = [
-                [261.63, 329.63, 392.00], // C Maj
-                [293.66, 349.23, 440.00], // D Min
-                [349.23, 440.00, 523.25], // F Maj
-                [392.00, 493.88, 587.33]  // G Maj
+                [261.63, 329.63, 392.00], [293.66, 349.23, 440.00],
+                [349.23, 440.00, 523.25], [392.00, 493.88, 587.33]
             ];
             let chordSelection = chords[Math.floor(stepIndex / 8) % chords.length];
 
-            // Launch cluster nodes for structural unison pad harmony chords
             chordSelection.forEach(freq => {
                 let osc = audioCtx.createOscillator();
                 let gainNode = audioCtx.createGain();
-
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq * 2, time); // elevated higher register octaves
+                osc.frequency.setValueAtTime(freq * 2, time);
 
                 gainNode.gain.setValueAtTime(0.0, time);
-                gainNode.gain.linearRampToValueAtTime(0.06, time + 0.1); // long fade pad profile attack
+                gainNode.gain.linearRampToValueAtTime(0.06, time + 0.1);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.45);
 
                 osc.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-
                 osc.start(time);
                 osc.stop(time + 0.5);
             });
         }
 
-        // Master Audio Dispatch Switch Router Route Map Assembly
         function dispatchInstrumentAudio(instrumentId, targetTime, stepIndex) {
             switch(instrumentId) {
                 case 0: playPianoNode(targetTime, stepIndex); break;
@@ -875,13 +858,12 @@
         }
 
         /**
-         * Precision Clock Lookahead Core Scheduler Algorithm Architecture
+         * Clock Scheduler
          */
         let sessionBaseStartTime = 0.0;
         let internalCycleLoopCount = 0;
 
         function triggerEngineScheduler() {
-            // Check upcoming parameters within timeline bounds frame window buffer
             while (nextNoteTime < audioCtx.currentTime + 0.05) {
                 scheduleNoteIndex(currentStep, nextNoteTime);
                 advanceNextStepCounter();
@@ -907,7 +889,7 @@
         }
 
         /**
-         * Smooth Animation Render Tick Engine Loop (60FPS Frame Redraw Processing)
+         * Animation Render Engine Loop
          */
         function animateSynchronizedPlayhead() {
             if (!isPlaying) return;
@@ -915,14 +897,12 @@
             let currentTime = audioCtx.currentTime;
             let elapsedSessionTime = currentTime - sessionBaseStartTime;
             
-            // Format precise counting digital timer layout string
             let minutes = Math.floor(elapsedSessionTime / 60);
             let seconds = Math.floor(elapsedSessionTime % 60);
             let centiseconds = Math.floor((elapsedSessionTime % 1) * 100);
             timerDisplay.textContent = 
                 `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
 
-            // Compute precision physical pixel point conversion calculations for playhead placement tracking
             let totalRunningTimeInLoop = elapsedSessionTime % LOOP_DURATION;
             let totalWidthOfTrackContainer = sequencerCol.clientWidth;
             let calculatedPercentagePositionX = totalRunningTimeInLoop / LOOP_DURATION;
@@ -934,22 +914,18 @@
         }
 
         /**
-         * Playback State Control Triggers
+         * Playback State Controls
          */
         function toggleStudioPlayback() {
             initAudioEngine();
-            
             if (!isPlaying) {
-                // Resume audio context layer if suspended by security browser gate safety parameters
                 if (audioCtx.state === 'suspended') {
                     audioCtx.resume();
                 }
-                
                 isPlaying = true;
                 txtPlayPause.textContent = "Pause Engine";
                 playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
                 
-                // Initialize timing counters sync pointers accurately
                 let currentAudioEngineTime = audioCtx.currentTime;
                 sessionBaseStartTime = currentAudioEngineTime;
                 internalCycleLoopCount = 0;
@@ -975,52 +951,52 @@
 
         function restartStudioPlayback() {
             let stateWasPlaying = isPlaying;
-            if (stateWasPlaying) {
-                haltStudioPlayback();
-            }
+            if (stateWasPlaying) haltStudioPlayback();
             
-            // Hard reset step position indices
             currentStep = 0;
             timerDisplay.textContent = "00:00.00";
             playhead.style.transform = "translateX(0px)";
             
-            if (stateWasPlaying) {
-                // Instantly respawn scheduler instances
-                toggleStudioPlayback();
-            } else {
-                showSystemToast("Sequencer Timeline Rewound");
-            }
+            if (stateWasPlaying) toggleStudioPlayback();
+            else showSystemToast("Sequencer Timeline Rewound");
+        }
+
+        /**
+         * Clear Sequencer Data Structural Arrays
+         */
+        function clearSequencerGridArray() {
+            // Re-allocate structural array memory back to false
+            sequencerData = Array.from({ length: TOTAL_INSTRUMENTS }, () => Array(TOTAL_STEPS).fill(false));
+            // Redraw matrix layout nodes instantly
+            assembleStudioDOM();
+            showSystemToast("Sequencer Matrix Cleared");
         }
 
         /**
          * UI Render Layer DOM Generator Matrix
          */
         function assembleStudioDOM() {
-            // 1. Construct Left Control Sidebars Channels
+            // Left Column
             instrumentsCol.innerHTML = '<div class="column-header">Audio Track Node</div>';
             INSTRUMENTS.forEach(inst => {
                 let card = document.createElement('div');
                 card.className = `instrument-card inst-${inst.id}`;
-                
                 let name = document.createElement('span');
                 name.className = 'instrument-name';
                 name.textContent = inst.name;
-                
                 let type = document.createElement('span');
                 type.className = 'instrument-type';
                 type.textContent = inst.type;
-                
                 card.appendChild(name);
                 card.appendChild(type);
                 instrumentsCol.appendChild(card);
             });
 
-            // 2. Build Structural Top Ruler Markers Sub-divisions
+            // Top Time Ruler
             timelineHeader.innerHTML = '';
             for (let b = 0; b < TOTAL_BARS; b++) {
                 let marker = document.createElement('div');
                 marker.className = 'bar-marker';
-                
                 let label = document.createElement('div');
                 label.className = 'bar-label';
                 label.textContent = `BAR ${b + 1} (${b}.0s)`;
@@ -1032,13 +1008,12 @@
                     dot.textContent = `.${s}`;
                     subdivisions.appendChild(dot);
                 }
-                
                 marker.appendChild(label);
                 marker.appendChild(subdivisions);
                 timelineHeader.appendChild(marker);
             }
 
-            // 3. Render Matrix Rows and Intersection Points
+            // Note Matrix Rows Intersection Nodes
             matrixRowsContainer.innerHTML = '';
             for (let r = 0; r < TOTAL_INSTRUMENTS; r++) {
                 let rowElement = document.createElement('div');
@@ -1056,19 +1031,13 @@
                             cell.classList.add('active');
                         }
                         
-                        // Register click binding event targets directly
                         cell.addEventListener('mousedown', () => {
                             initAudioEngine();
                             let state = !sequencerData[r][totalStepIndex];
                             sequencerData[r][totalStepIndex] = state;
                             cell.classList.toggle('active', state);
-                            
-                            // Auditively monitor user note placement triggers on the fly
-                            if(state) {
-                                dispatchInstrumentAudio(r, audioCtx.currentTime, totalStepIndex);
-                            }
+                            if(state) dispatchInstrumentAudio(r, audioCtx.currentTime, totalStepIndex);
                         });
-                        
                         block.appendChild(cell);
                     }
                     rowElement.appendChild(block);
@@ -1078,7 +1047,7 @@
         }
 
         /**
-         * Memory Vault Storage Persistent Configurations Block Array (LocalStorage Management)
+         * Memory Vault Storage Configurations
          */
         function initializeVaultSlots() {
             slotsBankContainer.innerHTML = '';
@@ -1100,13 +1069,11 @@
                 let btnSave = document.createElement('button');
                 btnSave.className = 'btn-slot save-action';
                 btnSave.textContent = 'S';
-                btnSave.title = `Save matrix state layout definition map to Slot ${i}`;
                 btnSave.onclick = () => saveConfigurationToVaultSlot(i);
 
                 let btnLoad = document.createElement('button');
                 btnLoad.className = 'btn-slot load-action';
                 btnLoad.textContent = 'L';
-                btnLoad.title = `Load array preset configuration from Slot ${i}`;
                 btnLoad.onclick = () => loadConfigurationFromVaultSlot(i);
 
                 actionWrapper.appendChild(btnSave);
@@ -1119,31 +1086,24 @@
 
         function saveConfigurationToVaultSlot(slotIndex) {
             let keyName = `synth2000_preset_slot_${slotIndex}`;
-            let serializedData = JSON.stringify(sequencerData);
-            localStorage.setItem(keyName, serializedData);
-            
-            showSystemToast(`Saved Matrix Pattern to Storage Slot 0${slotIndex}`);
-            initializeVaultSlots(); // update display indices configurations state indicators
+            localStorage.setItem(keyName, JSON.stringify(sequencerData));
+            showSystemToast(`Saved Pattern to Slot 0${slotIndex}`);
+            initializeVaultSlots();
         }
 
         function loadConfigurationFromVaultSlot(slotIndex) {
             let keyName = `synth2000_preset_slot_${slotIndex}`;
             let dataRawString = localStorage.getItem(keyName);
-            
             if (dataRawString) {
                 let matrixPayload = JSON.parse(dataRawString);
-                // Assign mapping verification check blocks lengths safely
                 if(Array.isArray(matrixPayload) && matrixPayload.length === TOTAL_INSTRUMENTS) {
                     sequencerData = matrixPayload;
-                    assembleStudioDOM(); // redraw full canvas framework layers instantly
-                    showSystemToast(`Loaded Array Data from Storage Slot 0${slotIndex}`);
+                    assembleStudioDOM();
+                    showSystemToast(`Loaded Pattern from Slot 0${slotIndex}`);
                 }
             }
         }
 
-        /**
-         * Helper System Toast Banner Notification Modals
-         */
         let toastTimeoutId = null;
         function showSystemToast(messageString) {
             clearTimeout(toastTimeoutId);
@@ -1154,7 +1114,6 @@
             }, 3000);
         }
 
-        // Add Window Resize Safe Redraw Handlers to snap element playhead tracking
         window.addEventListener('resize', () => {
             if(!isPlaying) {
                 playhead.style.transform = "translateX(0px)";
@@ -1162,22 +1121,16 @@
             }
         });
 
-        /**
-         * Application Boot Lifecycle Initializer Integration
-         */
         function initializeApplicationLifecycle() {
             injectInitialDemoPattern();
             assembleStudioDOM();
             initializeVaultSlots();
             
-            // Operational Click Trigger Registrations
             btnPlayPause.onclick = toggleStudioPlayback;
             btnRestart.onclick = restartStudioPlayback;
-            
-            console.log("SYNTH-2000 Hardware Web Audio Interface Framework active and ready.");
+            btnClearGrid.onclick = clearSequencerGridArray;
         }
 
-        // Initialize engine framework pipeline on content delivery ready
         window.onload = initializeApplicationLifecycle;
     </script>
 </body>
